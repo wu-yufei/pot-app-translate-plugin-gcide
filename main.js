@@ -1,27 +1,17 @@
 async function translate(text, from, to, options) {
-    const { config, utils } = options;
-    const { tauriFetch: fetch } = utils;
-    let { requestPath: url } = config;
-    let plain_text = text.replaceAll("/", "@@");
-    let encode_text = encodeURIComponent(plain_text);
-    if (url === undefined || url.length === 0) {
-        url = "lingva.pot-app.com"
-    }
-    if (!url.startsWith("http")) {
-        url = `https://${url}`;
-    }
-    const res = await fetch(`${url}/api/v1/${from}/${to}/${encode_text}`, {
-        method: 'GET',
-    });
+    const { utils } = options;
+    const { Database } = utils;
 
-    if (res.ok) {
-        let result = res.data;
-        const { translation } = result;
-        if (translation) {
-            return translation.replaceAll("@@", "/");;
-        } else {
-            throw JSON.stringify(result.trim());
-        }
+    const id = "plugin.com.pot-app.gcide";
+
+    const db = await Database.load(`sqlite:plugins/translate/${id}/gcide.db`);
+    let res = await db.select('SELECT * FROM word WHERE w = $1', [text]);
+    await db.close();
+    if (res.length > 0) {
+        let explaination = res[0].m;
+        explaination = explaination.replace(/<br\s*[\/]?>/gi, "\n");
+	    explaination = explaination.replace(/<[^>]+>/ig, '');
+        return explaination;
     } else {
         throw `Http Request Error\nHttp Status: ${res.status}\n${JSON.stringify(res.data)}`;
     }
